@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from django.conf import settings
 import json
-import cv2
+#import cv2
 import numpy as np
 import base64
 import matplotlib.pyplot as plt
@@ -37,14 +37,13 @@ class minitoringGem:
                     
                     #llamar imagenes
 
-                    imagen_response=self.mostrar_plot(df)
+                    #imagen_response=self.mostrar_plot(df)
 
                     #llamar imagen ping
-                    img_pings=self.image_ping(df)
+                   # img_pings=self.image_ping(df)
 
                     context = {'contenido': contenido,
-                               'df': df,
-                               'img_path': imagen_response,'img_ping':img_pings}
+                               'df': df}
 
                     #generate_pdf = reverse("generate_pdf") + f"?df={df}"
 
