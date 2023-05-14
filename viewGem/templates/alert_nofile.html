@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+  <div>
+    {% csrf_token %}
+    {% for message in messages %}
+      <div class="alert alert-warning mt-3" role="alert">
+        {{ message }}
+        <a href="{% url 'cargar_archivo' %}" class="btn btn-primary ms-3">Volver</a>
+      </div>
+    {% endfor %}
+    
+</div>
+</div>
+{% endblock %}

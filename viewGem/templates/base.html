@@ -1,0 +1,107 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mi sitio web{% endblock %}</title>
+    <!-- Incluir archivos de Bootstrap -->
+    <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
+    <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+
+    <style>
+        @import url("{% static 'bootstrap/css/style.css' %}");
+
+      </style>
+</head>
+<body>
+  
+        <!-- Aquí va el contenido del header -->
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom" >
+            <div class="container">
+                <!-- Sección de marca -->
+                <a class="navbar-brand" href="#">
+                    <img src="{% static 'images/logo-cms.png' %}" width="60" height="60" class="d-inline-block align-top img-fluid" alt="">
+                    <img src="{% static 'images/logo-udea.jpg' %}" width="60" height="60" class="d-inline-block align-top img-fluid" alt="">
+                </a>
+    
+                <!-- Botón para colapsar la barra de navegación en dispositivos pequeños -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse justify-content-start" id="navbarNav">
+                    <ul class="navbar-nav">
+                      <li class="nav-item">
+                        <a class="nav-link" href="{% url 'cargar_archivo' %}">Home</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="#">Search GE21</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="#">Contact</a>
+                      </li>
+                    </ul>
+                </div>
+
+            </div>
+        </nav>
+
+    <main>
+        <!-- Aquí va el contenido principal de la página -->
+        {% block content %}
+        {% endblock %}        
+    </main>
+    <!-- Pie de página -->
+    <footer class="custom-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-6 col-md-3">
+                  <h5>Contact</h5>
+                  <ul class="list-unstyled">
+                    <li>Address: Cl. 67 #53-108</li>
+                    <li> City: Medellín - Colombia</li>
+                    <li>Phone: (57) 3136762236</li>
+                    <li>Email: arualesb.1@cern.ch</li>
+                  </ul>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                  <h5></h5>
+                  <ul class="list-unstyled">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'cargar_archivo' %}">Home</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="#">Search GE21</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="#">Contact</a>
+                      </li>
+                  </ul>
+                </div>
+                <!-- <div class="col-sm-6 col-md-3">
+                  <h5>Nosotros</h5>
+                  <ul class="list-unstyled">
+                    <li>Misión</li>
+                    <li>Visión</li>
+                    <li>Historia</li>
+                  </ul>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                  <h5>Redes Sociales</h5>
+                  <ul class="list-unstyled">
+                    <li><a href="#"><i class="fab fa-facebook fa-fw"></i> Facebook</a></li>
+                    <li><a href="#"><i class="fab fa-twitter fa-fw"></i> Twitter</a></li>
+                    <li><a href="#"><i class="fab fa-instagram fa-fw"></i> Instagram</a></li>
+                  </ul>
+                </div>-->
+              </div>
+
+        </div>
+    </footer>
+    <!-- Incluir archivos de jQuery y Popper.js para Bootstrap -->
+    <script src="{% static 'jquery/jquery.min.js' %}"></script>
+    <script src="{% static 'popper/popper.min.js' %}"></script>
+</body>
+</html>
