@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from django.conf import settings
 import json
-import cv2
+#import cv2
 import numpy as np
 import base64
 import matplotlib.pyplot as plt
