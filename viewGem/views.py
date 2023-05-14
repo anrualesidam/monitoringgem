@@ -3,18 +3,18 @@ from .forms import ArchivoForm
 from django.contrib import messages
 import os
 
+import pandas as pd
+from django.conf import settings
+import json
+import cv2
+import numpy as np
+import base64
+import matplotlib.pyplot as plt
 # Create your views here.
 
 
 
-class minitoringGem:
-
-    def __init__(self, *args, **kwargs):
-
-        self.contnido="a"
-        
-     
-        
+class minitoringGem:        
 
     def cargar_archivo(self,request):
         if request.method == 'POST':
@@ -82,7 +82,7 @@ class minitoringGem:
             dicc[titulos[i]]=data[i]
         
         df = pd.DataFrame(dicc)
-        print(df)
+        #print(df)
 
         # Agregar el título al PDF
         #buffer = BytesIO()
@@ -252,14 +252,15 @@ class minitoringGem:
         #print(df_p)
         ping_d=list(df_p.SHORT_CIRCUITED_CHANNELS)[0]
         confi_pin=self.open_jsonPing()
-        print(ping_d)
-        print("ping_d",type(ping_d))
+        #print(ping_d)
+        #print("ping_d",type(ping_d))
         try:
             for j in ping_d:
-                print("j",j)
+                #print("j",j)
                 img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], 255, confi_pin[j]["thick"])    
         except:
-            print("revisar archivo")    
+            pass
+            #print("revisar archivo")    
         return ping_d,img3
 
     def image_ping(self,df):
