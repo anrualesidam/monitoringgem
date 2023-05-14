@@ -1,1 +1,1 @@
-web: python manage.py migrate && gunicorn viewGem.wsgi
+web: python manage.py migrate && gunicorn monitoringgem.wsgi
