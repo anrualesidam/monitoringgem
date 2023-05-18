@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from .forms import ArchivoForm
 from django.contrib import messages
+from django.urls import reverse
+from django.http import HttpResponse
 import os
 
 import pandas as pd
@@ -10,8 +12,16 @@ import cv2
 import numpy as np
 import base64
 import matplotlib.pyplot as plt
-# Create your views here.
 
+# PDF
+import re
+from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Image
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+import PIL as PL
+from io import BytesIO
 
 
 class minitoringGem:        
@@ -47,10 +57,10 @@ class minitoringGem:
                                'img_path': imagen_response,'img_ping':img_pings}
 
 
-                    #generate_pdf = reverse("generate_pdf") + f"?df={df}"
+                    generate_pdf = reverse("generate_pdf") + f"?df={df}"
 
                     # Incluir la URL en el contexto que se pasa a la función `render`
-                    #context["generate_pdf"] = generate_pdf
+                    context["generate_pdf"] = generate_pdf
                     return render(request, 'archivo_cargado.html', context)
                 
                     # hacer algo con el contenido
