@@ -37,13 +37,15 @@ class minitoringGem:
                     
                     #llamar imagenes
 
-                    #imagen_response=self.mostrar_plot(df)
+                    imagen_response=self.mostrar_plot(df)
 
                     #llamar imagen ping
-                   # img_pings=self.image_ping(df)
+                    img_pings=self.image_ping(df)
 
                     context = {'contenido': contenido,
-                               'df': df}
+                               'df': df,
+                               'img_path': imagen_response,'img_ping':img_pings}
+
 
                     #generate_pdf = reverse("generate_pdf") + f"?df={df}"
 
