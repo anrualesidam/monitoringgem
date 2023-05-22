@@ -1,0 +1,14 @@
+asgiref
+backports.zoneinfo
+contourpy
+cycler
+Django
+fonttools
+importlib-resources
+kiwisolver
+matplotlib
+numpy
+opencv-python
+packaging
+pandas
+Pillow
