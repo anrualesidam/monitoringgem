@@ -12,7 +12,14 @@ import cv2
 import numpy as np
 import base64
 import matplotlib.pyplot as plt
+from .forms import ContactForm
+from django.template.loader import render_to_string
+from django.core.mail import send_mail, BadHeaderError
+from django.shortcuts import redirect
+from django.utils.html import strip_tags
 
+#emails
+import string
 # PDF
 import re
 from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Image
@@ -70,6 +77,45 @@ class minitoringGem:
             
         else:
             return render(request, 'cargar_archivo.html')
+
+    def contac(self,request):
+        if request.method == 'POST':
+                #form = ContactForm(request.POST)
+
+                name = request.POST['name']
+                email = request.POST['email'] 
+                subject = request.POST['subject']
+                message = request.POST['message']
+                
+                # Crear un objeto MIMEText con el mensaje y el tipo de contenido
+                # Send the email
+                subject = 'GEM platform support - ' + subject
+                from_email = 'alruba40@gmail.com'
+                to_email = [email,'arualesb.1@cern.ch']
+                
+                message_with_sender = f"Hello {string.capwords(name)}: \n\n \
+                    Thank you very much for contacting us!!. \n\n \
+                    We will be contacting you shortly by email {email}  to resolve the concern \n\n \
+                    \"{message}\" \n\n Best regards \n Alexis Ruales!!"
+
+                
+                # Send the email
+                send_mail(subject,message_with_sender, from_email,to_email)
+    
+                messages.success(request, f'We will process the request with the email {email.upper()}, \n\n \
+                                 ¿Is that correct?')
+                return render(request, "confirmation_send_email.html")
+        
+        else:
+            #form = ContactForm()
+            #return render(request, "contact.html")
+
+         #       form = ContactForm()
+            return render(request, "contact.html")
+
+
+        
+    
 
 
     def generate_pdf(self,request):

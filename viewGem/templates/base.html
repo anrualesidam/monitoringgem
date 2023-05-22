@@ -5,8 +5,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mi sitio web{% endblock %}</title>
+    <title>{% block title %}Monitoring_GEM{% endblock %}</title>
     <!-- Incluir archivos de Bootstrap -->
+    <link rel="shortcut icon" href="{% static 'images/logo-cms.ico' %}">
     <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
     <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
 
@@ -40,7 +41,7 @@
                         <a class="nav-link" href="#">Search GE21</a>
                       </li>
                       <li class="nav-item">
-                        <a class="nav-link" href="#">Contact</a>
+                        <a class="nav-link" href="{% url 'contact' %}">Contact</a>
                       </li>
                     </ul>
                 </div>

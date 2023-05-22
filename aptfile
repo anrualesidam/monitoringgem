@@ -1,8 +1,0 @@
-#!/usr/bin/env aptfile
-# ^ note the above shebang
-
-# trigger an apt-get update
-update
-
-# install some packages
-package "libcairo2-dev"
