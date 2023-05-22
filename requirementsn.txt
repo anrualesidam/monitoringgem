@@ -12,3 +12,4 @@ opencv-python
 packaging
 pandas
 Pillow
+whitenoise
