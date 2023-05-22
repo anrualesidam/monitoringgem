@@ -49,7 +49,7 @@ class minitoringGem:
                     contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
                     contenido2 = archivo.read().decode('utf-8')
                     df=self.procesor_data(contenido)
-                    #print(df)
+                    
                     
                     
                     #llamar imagenes
@@ -87,6 +87,7 @@ class minitoringGem:
                 subject = request.POST['subject']
                 message = request.POST['message']
                 
+
                 # Crear un objeto MIMEText con el mensaje y el tipo de contenido
                 # Send the email
                 subject = 'GEM platform support - ' + subject
@@ -139,7 +140,7 @@ class minitoringGem:
             dicc[titulos[i]]=data[i]
         
         df = pd.DataFrame(dicc)
-        #print(df)
+        
 
         # Agregar el título al PDF
         #buffer = BytesIO()
@@ -306,18 +307,16 @@ class minitoringGem:
         ruta_imagen_ping = os.path.join(settings.BASE_DIR, 'viewGem/static/images/Connector_with_border.jpg')
         img3 = cv2.imread(ruta_imagen_ping) 
         img3=cv2.resize(img3, (1552, 355))
-        #print(df_p)
+        
         ping_d=list(df_p.SHORT_CIRCUITED_CHANNELS)[0]
         confi_pin=self.open_jsonPing()
-        #print(ping_d)
-        #print("ping_d",type(ping_d))
         try:
             for j in ping_d:
-                #print("j",j)
+                
                 img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], 255, confi_pin[j]["thick"])    
         except:
             pass
-            #print("revisar archivo")    
+               
         return ping_d,img3
 
     def image_ping(self,df):
@@ -351,7 +350,7 @@ class minitoringGem:
 
         ruta_imagen_ping_t = os.path.join(settings.BASE_DIR, 'ping.jpg')
         img = cv2.imread(ruta_imagen_ping_t) 
-        #print(img)
+        
 
         imagen_jpeg1 = cv2.imencode('.jpeg', img)[1].tostring()
         imagen_base64 =base64.b64encode(imagen_jpeg1).decode('utf-8')  
