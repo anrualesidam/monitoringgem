@@ -19,7 +19,7 @@ import matplotlib
 matplotlib.use("Agg")
 import base64
 import io
-# import numpy as np
+import numpy as np
 # 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
@@ -98,23 +98,45 @@ class minitoringGem:
         df_data = request.session.get('dfdata')
         if df_data is not None:
             df = pd.DataFrame.from_dict(df_data) 
-            # Generar una gráfica usando Matplotlib
-            plt.plot([1,2], [3,4])
-            plt.xlabel("X")
-            plt.ylabel("Y")
-            plt.title("Gráfica Generada")
-
-            # Guardar la gráfica en un objeto BytesIO
-            buffer = io.BytesIO()
-            plt.savefig(buffer, format="png")
-            buffer.seek(0)
-            plt.close()
-
-            # Devolver la imagen como respuesta
-            response = HttpResponse(buffer.read(), content_type="image/png")
+            processed_image =self.mostrar_plot_all(df)
+            _, buffer = cv2.imencode('.png', processed_image)
+            response = HttpResponse(buffer.tobytes(), content_type='image/png')
             return response
         else:
             return HttpResponse("No hay datos para generar la imagen.")
+    
+    def mostrar_plot_all(self,df):
+    
+        
+        # crear el plot con matplotlib
+        confi_vfat=self.open_jsonVfat()
+        # convertir el plot en una imagen con OpenCV
+        ruta_imagen = os.path.join(settings.BASE_DIR, 'viewGem/static/images/input_2GM2.png')
+        img = cv2.imread(ruta_imagen)
+        img=cv2.resize(img, (2480,1580))
+        list_pos=df.POSITION.unique()
+
+        for i in list_pos:
+
+            df_p=df[df["POSITION"]==i]
+            prueba=df_p.iloc[0,1]
+
+
+            overlay = img.copy()
+            pts = np.array(confi_vfat[i], np.int32)
+
+            
+            
+            if prueba=="PASSED":
+                cv2.fillPoly(overlay, [pts], (0, 128, 0))
+            else:
+                cv2.fillPoly(overlay, [pts], (0, 0, 255))
+
+            img=cv2.addWeighted(overlay, 0.5, img, 1 - 0.5, 1.0)
+        
+        return img
+        
+    
 
     def contac(self,request):
         if request.method == 'POST':
