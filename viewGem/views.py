@@ -20,6 +20,12 @@ matplotlib.use("Agg")
 import base64
 import io
 import numpy as np
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+
+
 # 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
@@ -106,8 +112,6 @@ class minitoringGem:
             return HttpResponse("No hay datos para generar la imagen.")
     
     def mostrar_plot_all(self,df):
-    
-        
         # crear el plot con matplotlib
         confi_vfat=self.open_jsonVfat()
         # convertir el plot en una imagen con OpenCV
@@ -135,6 +139,51 @@ class minitoringGem:
             img=cv2.addWeighted(overlay, 0.5, img, 1 - 0.5, 1.0)
         
         return img
+
+    def getpdf(self, request, *args, **kwargs):
+        # ... Tu lógica para obtener y generar el PDF ...
+
+        # Llamar a la función para generar el PDF con la imagen
+        df_data = request.session.get('dfdata')
+        if df_data is not None:
+            df = pd.DataFrame.from_dict(df_data) 
+            processed_image =self.mostrar_plot_all(df)
+            pdf_buffer = self.generate_pdf_with_image(processed_image)
+
+            # Devolver el PDF como una respuesta HTTP con el encabezado de descarga
+            response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="report.pdf"'
+            return response
+
+    def generate_pdf_with_image(self,image):
+        # Crear un objeto BytesIO para almacenar el PDF
+        from io import BytesIO
+        pdf_buffer = BytesIO()
+
+        # Crear el PDF usando ReportLab
+        c = canvas.Canvas(pdf_buffer, pagesize=letter)
+        c.drawString(100, 750, "Ejemplo de PDF con Imagen")
+
+        # Guardar la imagen en un búfer temporal
+        img_temp = BytesIO()
+        _, buffer = cv2.imencode('.png', image)
+        img_temp.write(buffer.tobytes())
+        img_temp.seek(0)
+
+        # Agregar la imagen al PDF
+        img = ImageReader(img_temp)
+        c.drawImage(img, 100, 600, width=400, height=300)
+
+        c.showPage()
+        c.save()
+
+        # Regresar el objeto BytesIO con el contenido del PDF
+        pdf_buffer.seek(0)
+        return pdf_buffer
+    
+
+        
+    
         
     
 
