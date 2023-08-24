@@ -10,7 +10,7 @@
 <div class="d-flex justify-content-center align-items-center">
     <div>
         <a class="btn btn-primary mr-2" href="{% url 'cargar_archivo' %}">Upload new file</a>
-        <a href="{% url 'generate_pdf' %}" download="report.pdf">Descargar PDF</a>
+        <a href="{% url 'generate_pdf' %}" target="_blank"  class="btn btn-secondary mr-2">Download report</a>
         
         <!--<a href="{{generate_pdf}}" target="_blank"  class="btn btn-secondary mr-2" type="submit">Download report</a>
           --> 
@@ -34,14 +34,20 @@
        
       <div class="col">
         <img src="data:image/png;base64,{{ img_plot }}" alt="Plot" class="img-fluid">
+        
         <!--<img src="data:image/jpeg;base64,{{ img_path }}" alt="Plot" class="img-fluid">-->
       </div>
-      <!--<div class="col">
+      <div class="col">
+
+        {% if imagen_generada %}
+            <img src="data:image/png;base64,{{ imagen_generada }} " class="img-fluid">
+        {% endif %}
         
-        <img src="data:image/jpeg;base64,{{ img_ping }}" alt="Plot" class="img-fluid"> 
+        <!--<img src="data:image/jpeg;base64,{{ img_ping }}" alt="Plot" class="img-fluid"> 
+        -->
       </div>
 
-       --> 
+       
         
 
     </div>

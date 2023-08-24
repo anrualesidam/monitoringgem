@@ -22,9 +22,11 @@ import io
 import numpy as np
 
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
-
+from PIL import Image
+from io import BytesIO
+from colorama import Fore, Style
 
 # 
 # import matplotlib.pyplot as plt
@@ -47,7 +49,9 @@ from reportlab.lib.utils import ImageReader
 # from io import BytesIO
 
 
-class minitoringGem:        
+class minitoringGem:  
+
+    # CARGA DE ARCHIVOS      
 
     def cargar_archivo(self,request):
         if request.method == 'POST':
@@ -75,11 +79,17 @@ class minitoringGem:
                     #imagen_response=self.mostrar_plot(df)
 
                     #llamar imagen ping
-                    #img_pings=self.image_ping(df)
+                    img_pings=self.view_image_ping(request)
+                    
+                    try:
+                        imagen_base64ping = base64.b64encode(img_pings.content).decode('utf-8')
+                    except:
+                        imagen_base64ping = None 
 
                     context = {
                             'contenido': contenido,
                             'img_plot': img_plot,
+                            'imagen_generada': imagen_base64ping,
                         }
                                #'df': df,
                                #'img_path': imagen_response,'img_ping':img_pings}
@@ -99,18 +109,71 @@ class minitoringGem:
         else:
             return render(request, 'cargar_archivo.html')
         
-
+    # VISTA DE LOS VFAT
     def search_view(self,request):
         df_data = request.session.get('dfdata')
         if df_data is not None:
             df = pd.DataFrame.from_dict(df_data) 
             processed_image =self.mostrar_plot_all(df)
+            # Convertir la figura en bytes usando PIL y base64
             _, buffer = cv2.imencode('.png', processed_image)
             response = HttpResponse(buffer.tobytes(), content_type='image/png')
             return response
         else:
             return HttpResponse("No hay datos para generar la imagen.")
     
+    # VISTA DE LOS PING
+    def view_image_ping(self,request):
+        df_data = request.session.get('dfdata')
+        if df_data is not None:
+            try:
+                df = pd.DataFrame.from_dict(df_data) 
+                processed_image =self.mostrar_ping_all(df)
+                buf = BytesIO()
+                processed_image.canvas.print_png(buf)
+
+                # Obtener el contenido RGBA desde el búfer
+                buf.seek(0)
+                processed_image = np.array(Image.open(buf), dtype=np.uint8)
+                _, buffer = cv2.imencode('.png', processed_image)
+                response = HttpResponse(buffer.tobytes(), content_type='image/png')
+                return response
+            except:
+                HttpResponse("No hay datos para generar la imagen.")
+        else:
+            return HttpResponse("No hay datos para generar la imagen.")
+    
+    def mostrar_ping_all(self,df):
+        
+        len_plot=len(df[df["RESULT"]=="FAILED"])
+        fig1 = plt.figure(figsize=(20, 4*len_plot),frameon=False)
+        fig1.subplots_adjust(hspace=0.5, wspace=0.5)
+        j=1
+
+        list_pos=df.POSITION.unique()
+
+        for i in list_pos: 
+            
+            df_p=df[df["POSITION"]==i]
+            prueba=df_p.iloc[0,1]           
+            if prueba=="FAILED":
+                ax = fig1.add_subplot(len_plot, 1, j)
+                vfat=list(df_p.POSITION)[0]
+                ax.axis("off")        
+                ping_d,imag6=self.img_ping(df_p)
+                j=j+1
+                
+                ax.set_title('{} - SHORT_CIRCUITED:{}'.format(vfat, ping_d), fontsize=32,
+                              fontweight="bold", loc='center')
+                ax.imshow(imag6)              
+            
+
+            else:
+                fig1.subplots_adjust(hspace=0.5, wspace=0.5)
+                    
+        return fig1
+        
+    # GENERACION DE PLOT VFAT
     def mostrar_plot_all(self,df):
         # crear el plot con matplotlib
         confi_vfat=self.open_jsonVfat()
@@ -124,12 +187,8 @@ class minitoringGem:
 
             df_p=df[df["POSITION"]==i]
             prueba=df_p.iloc[0,1]
-
-
             overlay = img.copy()
-            pts = np.array(confi_vfat[i], np.int32)
-
-            
+            pts = np.array(confi_vfat[i], np.int32)          
             
             if prueba=="PASSED":
                 cv2.fillPoly(overlay, [pts], (0, 128, 0))
@@ -139,6 +198,8 @@ class minitoringGem:
             img=cv2.addWeighted(overlay, 0.5, img, 1 - 0.5, 1.0)
         
         return img
+    
+    #GENERACION DE PDF
 
     def getpdf(self, request, *args, **kwargs):
         # ... Tu lógica para obtener y generar el PDF ...
@@ -154,7 +215,8 @@ class minitoringGem:
             response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
             response['Content-Disposition'] = 'attachment; filename="report.pdf"'
             return response
-
+        
+    # CREACION DE PDF
     def generate_pdf_with_image(self,image):
         # Crear un objeto BytesIO para almacenar el PDF
         from io import BytesIO
@@ -164,15 +226,25 @@ class minitoringGem:
         c = canvas.Canvas(pdf_buffer, pagesize=letter)
         c.drawString(100, 750, "Ejemplo de PDF con Imagen")
 
+        img_width, img_height = Image.fromarray(image).size
+        # Calcular la posición para centrar la imagen
+        canvas_width, canvas_height = landscape(letter)
+
+        img_width=400
+        img_height=300
+        x_pos = (canvas_height - img_width) / 2
+        y_pos = (canvas_height - img_height) / 2
+        
+        # Guardar la imagen en un búfer temporal
         # Guardar la imagen en un búfer temporal
         img_temp = BytesIO()
-        _, buffer = cv2.imencode('.png', image)
-        img_temp.write(buffer.tobytes())
+        image_pil = Image.fromarray(image)
+        image_pil.save(img_temp, format='PNG')
         img_temp.seek(0)
 
         # Agregar la imagen al PDF
         img = ImageReader(img_temp)
-        c.drawImage(img, 100, 600, width=400, height=300)
+        c.drawImage(img, canvas_height/2-400/2, canvas_height-300, width=img_width, height=img_height)
 
         c.showPage()
         c.save()
@@ -423,8 +495,8 @@ class minitoringGem:
         confi_pin=self.open_jsonPing()
         try:
             for j in ping_d:
-                
-                img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], 255, confi_pin[j]["thick"])    
+                color = (0, 0, 255)
+                img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], color, confi_pin[j]["thick"])    
         except:
             pass
                
