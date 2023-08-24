@@ -8,27 +8,32 @@ import os
 import pandas as pd
 from django.conf import settings
 import json
-import cv2
-import numpy as np
-import base64
-import matplotlib.pyplot as plt
-from .forms import ContactForm
-from django.template.loader import render_to_string
-from django.core.mail import send_mail, BadHeaderError
-from django.shortcuts import redirect
-from django.utils.html import strip_tags
-
-#emails
 import string
+from django.core.mail import send_mail
+
+# 
+# 
+# import cv2
+# import numpy as np
+# import base64
+# import matplotlib.pyplot as plt
+# from .forms import ContactForm
+# from django.template.loader import render_to_string
+# from django.core.mail import send_mail, BadHeaderError
+# from django.shortcuts import redirect
+# from django.utils.html import strip_tags
+
+# #emails
+# 
 # PDF
-import re
-from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Image
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
-import PIL as PL
-from io import BytesIO
+# import re
+# from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Image
+# from reportlab.lib.pagesizes import letter
+# from reportlab.lib import colors
+# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle 
+# from reportlab.lib.enums import TA_CENTER
+# import PIL as PL
+# from io import BytesIO
 
 
 class minitoringGem:        
@@ -40,34 +45,34 @@ class minitoringGem:
                 return render(request, 'alert_nofile.html')
             
             else:
-                archivo = request.FILES['archivo']
+                archivo = request.FILES['archivo'] 
                 
                 extension = self.obtener_extension(archivo.name)
 
                 if extension == '.txt':
                     
                     contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
-                    contenido2 = archivo.read().decode('utf-8')
+                    
                     df=self.procesor_data(contenido)
                     
                     
                     
                     #llamar imagenes
 
-                    imagen_response=self.mostrar_plot(df)
+                    #imagen_response=self.mostrar_plot(df)
 
                     #llamar imagen ping
-                    img_pings=self.image_ping(df)
+                    #img_pings=self.image_ping(df)
 
-                    context = {'contenido': contenido,
-                               'df': df,
-                               'img_path': imagen_response,'img_ping':img_pings}
+                    context = {'contenido': contenido}
+                               #'df': df,
+                               #'img_path': imagen_response,'img_ping':img_pings}
 
 
-                    generate_pdf = reverse("generate_pdf") + f"?df={df}"
+                    #generate_pdf = reverse("generate_pdf") + f"?df={df}"
 
                     # Incluir la URL en el contexto que se pasa a la función `render`
-                    context["generate_pdf"] = generate_pdf
+                    #context["generate_pdf"] = generate_pdf
                     return render(request, 'archivo_cargado.html', context)
                 
                     # hacer algo con el contenido
