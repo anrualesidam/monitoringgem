@@ -13,9 +13,14 @@ from django.core.mail import send_mail
 
 # 
 # 
-# import cv2
+import cv2
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+import base64
+import io
 # import numpy as np
-# import base64
+# 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
 # from django.template.loader import render_to_string
@@ -54,8 +59,10 @@ class minitoringGem:
                     contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
                     
                     df=self.procesor_data(contenido)
-                    
-                    
+                    request.session['dfdata'] = df.to_dict() 
+
+                    response =self.search_view(request)
+                    img_plot = base64.b64encode(response.content).decode("utf-8")
                     
                     #llamar imagenes
 
@@ -64,7 +71,10 @@ class minitoringGem:
                     #llamar imagen ping
                     #img_pings=self.image_ping(df)
 
-                    context = {'contenido': contenido}
+                    context = {
+                            'contenido': contenido,
+                            'img_plot': img_plot,
+                        }
                                #'df': df,
                                #'img_path': imagen_response,'img_ping':img_pings}
 
@@ -82,6 +92,29 @@ class minitoringGem:
             
         else:
             return render(request, 'cargar_archivo.html')
+        
+
+    def search_view(self,request):
+        df_data = request.session.get('dfdata')
+        if df_data is not None:
+            df = pd.DataFrame.from_dict(df_data) 
+            # Generar una gráfica usando Matplotlib
+            plt.plot([1,2], [3,4])
+            plt.xlabel("X")
+            plt.ylabel("Y")
+            plt.title("Gráfica Generada")
+
+            # Guardar la gráfica en un objeto BytesIO
+            buffer = io.BytesIO()
+            plt.savefig(buffer, format="png")
+            buffer.seek(0)
+            plt.close()
+
+            # Devolver la imagen como respuesta
+            response = HttpResponse(buffer.read(), content_type="image/png")
+            return response
+        else:
+            return HttpResponse("No hay datos para generar la imagen.")
 
     def contac(self,request):
         if request.method == 'POST':
@@ -275,6 +308,8 @@ class minitoringGem:
     #PLOT DE VFAT
 
     def mostrar_plot(self,df):
+
+        
         # crear el plot con matplotlib
         confi_vfat=self.open_jsonVfat()
         # convertir el plot en una imagen con OpenCV
