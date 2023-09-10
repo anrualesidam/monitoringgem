@@ -25,10 +25,11 @@ from reportlab.pdfgen import canvas
 
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
-from PIL import Image
+
+from PIL import Image, ImageOps
 from io import BytesIO
 from colorama import Fore, Style
-
+from matplotlib.transforms import Bbox
 
 from pandas.plotting import table
 # 
@@ -71,8 +72,11 @@ class minitoringGem:
                     
                     contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
                     
-                    df=self.procesor_data(contenido)
-                    request.session['dfdata'] = df.to_dict() 
+                    df,name_board,user_name,fechab=self.procesor_data(contenido)
+                    request.session['dfdata'] = df.to_dict()
+                    request.session['name_board'] = name_board
+                    request.session['user_name'] = user_name
+                    request.session['fechab'] = fechab
 
                     response =self.search_view(request)
                     img_plot = base64.b64encode(response.content).decode("utf-8")
@@ -146,7 +150,7 @@ class minitoringGem:
         else:
             return HttpResponse("No hay datos para generar la imagen.")
     
-    def mostrar_ping_all(self,df):
+    def mostrar_ping_all(self,df,pdf=False):
         
         len_plot=len(df[df["RESULT"]=="FAILED"])
         fig1 = plt.figure(figsize=(20, 4*len_plot),frameon=False)
@@ -155,15 +159,14 @@ class minitoringGem:
 
         list_pos=df.POSITION.unique()
 
-        for i in list_pos: 
-            
+        for i in list_pos:             
             df_p=df[df["POSITION"]==i]
             prueba=df_p.iloc[0,1]           
             if prueba=="FAILED":
                 ax = fig1.add_subplot(len_plot, 1, j)
                 vfat=list(df_p.POSITION)[0]
                 ax.axis("off")        
-                ping_d,imag6=self.img_ping(df_p)
+                ping_d,imag6=self.img_ping(df_p,pdf)
                 j=j+1
                 
                 ax.set_title('{} - SHORT_CIRCUITED:{}'.format(vfat, ping_d), fontsize=32,
@@ -173,11 +176,12 @@ class minitoringGem:
 
             else:
                 fig1.subplots_adjust(hspace=0.5, wspace=0.5)
+        
                     
         return fig1
         
     # GENERACION DE PLOT VFAT
-    def mostrar_plot_all(self,df):
+    def mostrar_plot_all(self,df,pdf=False):
         # crear el plot con matplotlib
         confi_vfat=self.open_jsonVfat()
         # convertir el plot en una imagen con OpenCV
@@ -196,7 +200,10 @@ class minitoringGem:
             if prueba=="PASSED":
                 cv2.fillPoly(overlay, [pts], (0, 128, 0))
             else:
-                cv2.fillPoly(overlay, [pts], (0, 0, 255))
+                if pdf:
+                    cv2.fillPoly(overlay, [pts], (255, 0,0))
+                else:
+                    cv2.fillPoly(overlay, [pts], (0, 0, 255))
 
             img=cv2.addWeighted(overlay, 0.5, img, 1 - 0.5, 1.0)
         
@@ -209,18 +216,41 @@ class minitoringGem:
 
         # Llamar a la función para generar el PDF con la imagen
         df_data = request.session.get('dfdata')
+        name_board = request.session.get('name_board')
+        user_name = request.session.get('user_name')
+        fechab = request.session.get('fechab')
+
         if df_data is not None:
             df = pd.DataFrame.from_dict(df_data) 
-            processed_image =self.mostrar_plot_all(df)
-            pdf_buffer = self.generate_pdf_with_image(df,processed_image)
+            #VFAT
+            processed_image =self.mostrar_plot_all(df,pdf=True)
+
+            #PING SHORT
+            processed_image_ping_short =self.mostrar_ping_all(df,pdf=True)
+
+            es_cero = any(dim == 0 for dim in processed_image_ping_short.get_size_inches())
+            
+
+            if es_cero:
+                
+                processed_image_ping_short=np.array([], dtype=np.uint8)
+            else:
+                buf = BytesIO()            
+                processed_image_ping_short.canvas.print_png(buf)           
+
+               # # Obtener el contenido RGBA desde el búfer
+                buf.seek(0)
+                processed_image_ping_short = np.array(Image.open(buf), dtype=np.uint8)
+
+            pdf_buffer = self.generate_pdf_with_image(df,processed_image,processed_image_ping_short,name_board,user_name,fechab)
 
             # Devolver el PDF como una respuesta HTTP con el encabezado de descarga
             response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="report.pdf"'
+            response['Content-Disposition'] = 'attachment; filename="Report_{}.pdf"'.format(name_board[:-1].split(":")[1])
             return response
         
     # CREACION DE PDF
-    def generate_pdf_with_image(self,df_r,image):
+    def generate_pdf_with_image(self,df_r,image,imag_short,name_board,user_name,fechab):
         # Crear un objeto BytesIO para almacenar el PDF
 
         
@@ -267,11 +297,20 @@ class minitoringGem:
         # Agregar el título centrado
         c.drawString(x, 750, titulo)
 
+
+        # == information board
+
+        c.drawString(canvas_height/2-380/2, 710, name_board[:-1])
+        c.drawString(canvas_height/2-380/2, 695, user_name[:-1])
+        c.drawString(canvas_height/2-380/2, 680, fechab[:-1])
+
         # ==== DataFrame============
         fig, ax = plt.subplots(figsize=(18, 11))
 
         # Ocultar ejes en la figura
+        ax.axis('tight')
         ax.axis('off')
+       
 
         # Crear una tabla de Pandas en la figura
         tabla = ax.table(cellText=df_r.values, colLabels=df_r.columns, cellLoc='center', loc='center')
@@ -300,15 +339,71 @@ class minitoringGem:
 
 
         # Guardar la figura como una imagen en memoria (BytesIO)
+        
         buffer = BytesIO()
-        plt.savefig(buffer, format='png', bbox_inches='tight')
+        plt.savefig(buffer, format='png', bbox_inches=Bbox([[2.2, 3.15], [16.3,7.75]]))
+        
         buffer.seek(0)
-        c.drawImage(ImageReader(buffer), canvas_height/2-380/2, 400,width=380, height=280) 
+        c.drawImage(ImageReader(buffer), canvas_height/2-380/2, 510,width=380, height=160) 
 
         # ==Imagen VFAT
-        c.drawImage(img, canvas_height/2-400/2, canvas_height-400, width=img_width, height=img_height)
+
+
+        titulovfat = "Read-Out Board (ROB)"
+        # Obtener el ancho del título formateado        
+        titulo_widthvfat = c.stringWidth(titulovfat, "Helvetica-Bold", 24)            
+
+        xvfat = (widtht - titulo_widthvfat/2) / 2
+        # Agregar el título centrado
+        c.drawString(xvfat, 480, titulovfat)
+
+        #plot VFAT
+
+        c.drawImage(img, canvas_height/2-400/2, canvas_height-460, width=img_width, height=img_height)
 
         c.showPage()
+
+
+        es_cerod = all(dim > 0 for dim in imag_short.shape)
+
+        if es_cerod:
+
+            titulo = "VFAT'S - SHORT_CIRCUITED"
+            # Obtener el ancho del título formateado        
+            titulo_width = c.stringWidth(titulo, "Helvetica-Bold", 24)            
+
+            x = (widtht - titulo_width/2) / 2
+            # Agregar el título centrado
+            c.drawString(x, 740, titulo)
+
+
+
+            img_tempshort = BytesIO()
+            image_pilshort = Image.fromarray(imag_short)
+            
+            if image_pilshort.mode == 'RGBA':
+                alpha = image_pilshort.split()[3]
+                bgmask = alpha.point(lambda x: 255-x)
+                image_pilshort = image_pilshort.convert('RGB')
+                image_pilshort.paste((255,255,255), None, bgmask)
+            
+            image_pilshort = image_pilshort.resize((2000, 4800))
+
+            image_pilshort = image_pilshort.crop((500, 300, 2000-450, 4800-300))
+
+            image_pilshort.save(img_tempshort, format='PNG')
+
+            img_tempshort.seek(0)
+
+            # Agregar la imagen al PDF
+            imgshort = ImageReader(img_tempshort)
+            widthshort=canvas_height-200
+            img_heightshort=canvas_height
+
+            c.drawImage(imgshort, canvas_height/2-widthshort/2,canvas_height-30-img_heightshort/1.3,width=widthshort, height=img_heightshort)
+
+
+
         c.save()
 
         # Regresar el objeto BytesIO con el contenido del PDF
@@ -364,127 +459,6 @@ class minitoringGem:
     
 
 
-    def generate_pdf(self,request):
-
-        # Crea la parte inicial del reporte
-        s= request.GET.get('df')
-        parametro1 =re.sub( r'][0-9]+', ']', s).replace("S0","S").replace(" ",":").replace(",:",",")
-        parametro1 = np.array(parametro1.split(':'))[np.array(parametro1.split(':'))!='']
-        titulos=parametro1[0:4]
-        
-        data=[[],[],[],[]]
-
-        for i in range(12):
-            data[0].append(parametro1[4+4*i])
-            data[1].append(parametro1[5+4*i])
-            data[2].append(parametro1[6+4*i])
-            data[3].append(parametro1[7+4*i])
-        dicc={}
-
-        for i in range(len(titulos)):
-            dicc[titulos[i]]=data[i]
-        
-        df = pd.DataFrame(dicc)
-        
-
-        # Agregar el título al PDF
-        #buffer = BytesIO()
-
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="mi_archivo.pdf"'
-        doc = SimpleDocTemplate(response, pagesize=letter)
-        
-        #title = Paragraph("Reporte de Personas", styles['Heading1'])
-        
-        
-        
-            # Agregar el DataFrame a una tabla
-            
-        df_table = Table([df.columns.to_list()] + df.values.tolist())
-        df_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                                    ('FONTSIZE', (0, 1), (-1, -1), 8)
-                                    ]))
-        
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(name='TitleStyle',
-            parent=styles['Title'],
-            alignment=TA_CENTER
-        )
-
-        elements = []
-
-        estilo_titulo = styles['Heading1']
-        estilo_parrafo = styles['Normal']
-        titulo = Paragraph("REPORT GE21", title_style)
-        #doc.build([titulo])
-        elements.append(titulo)
-
-        texto = Paragraph("Este es un ejemplo de texto.", title_style)
-
-        elements.append(texto)
-
-        elements.append(df_table)
-
-        # IMAGEN VFAT
-
-        imagen_bytes=base64.b64decode(self.mostrar_plot(df))
-
-
-        imagen_pil = PL.Image.open(BytesIO(imagen_bytes))
-        imagen_pil = imagen_pil.resize((int(550), int(300)))
-
-        # Convertir la imagen a OpenCV
-        imagen_cv2 = cv2.cvtColor(np.array(imagen_pil), cv2.COLOR_RGB2BGR)
-
-        # Guardar la imagen en un archivo temporal
-        _, imagen_temp = cv2.imencode(".jpg", imagen_cv2)
-        imagen_bytes = imagen_temp.tobytes()
-
-        # Agregar la imagen al contenido del PDF
-        imagen = Image(BytesIO(imagen_bytes))
-        elements.append(imagen)
-
-        # IMAGEN PINGS
-
-        imagen_bytes_b=base64.b64decode(self.image_ping(df))
-
-
-        imagen_pil_b = PL.Image.open(BytesIO(imagen_bytes_b))
-        imagen_pil_b = imagen_pil_b.resize((int(imagen_pil_b.width /3), int(imagen_pil_b.height/3)))
-
-        # Convertir la imagen a OpenCV
-        imagen_cv2_b = cv2.cvtColor(np.array(imagen_pil_b), cv2.COLOR_RGB2BGR)
-
-        # Guardar la imagen en un archivo temporal
-        _, imagen_temp_b = cv2.imencode(".jpg", imagen_cv2_b)
-        imagen_bytes_b1 = imagen_temp_b.tobytes()
-
-        # Agregar la imagen al contenido del PDF
-        imagen_b = Image(BytesIO(imagen_bytes_b1))
-        elements.append(imagen_b)
-
-
-
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
-        
-
-        doc.build(elements)#[titulo,texto,df_table,imagen_response])
-
-        #imagen
-
-        response.write(buffer.getvalue())
-        
-        
-
-        return response
 
     #Procesar la data 
 
@@ -509,7 +483,7 @@ class minitoringGem:
         df=pd.DataFrame(dicc)
 
 
-        return df#,name_board,user_name,fecha
+        return df,name_board,user_name,fecha
 
 
     #PLOT DE VFAT
@@ -550,59 +524,29 @@ class minitoringGem:
         return imagen_base64#render(request, 'imagen.html', contexto)
 
     #IMAGEN DE PINGS
-    def img_ping(self,df_p):
+    def img_ping(self,df_p,pdf):
         ruta_imagen_ping = os.path.join(settings.BASE_DIR, 'viewGem/static/images/Connector_with_border.jpg')
         img3 = cv2.imread(ruta_imagen_ping) 
         img3=cv2.resize(img3, (1552, 355))
         
         ping_d=list(df_p.SHORT_CIRCUITED_CHANNELS)[0]
+
+        
         confi_pin=self.open_jsonPing()
         try:
             for j in ping_d:
-                color = (0, 0, 255)
+                if pdf:
+                    color = (255, 255, 0)
+                else:
+                    color = (0, 255, 255)
+
                 img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], color, confi_pin[j]["thick"])    
         except:
             pass
                
         return ping_d,img3
 
-    def image_ping(self,df):
-        len_plot=len(df[df["RESULT"]=="FAILED"])
-        fig1 = plt.figure(figsize=(20, 4*len_plot),frameon=False)
-        fig1.subplots_adjust(hspace=0.5, wspace=0.5)
-        j=1
 
-        list_pos=df.POSITION.unique()
-
-        for i in list_pos:    
-            df_p=df[df["POSITION"]==i]
-            prueba=df_p.iloc[0,1]
-            if prueba=="FAILED":
-                ax = fig1.add_subplot(len_plot, 1, j)
-                vfat=list(df_p.POSITION)[0]
-                ax.axis("off")        
-                ping_d,imag6=self.img_ping(df_p)
-                j=j+1
-                ax.set_title('{} - SHORT_CIRCUITED:{}'.format(vfat,ping_d),fontsize = 32,
-                             fontweight="bold")
-                ax.imshow(imag6)
-                
-            
-
-            else:
-                pass
-
-        plt.savefig("ping.jpg", bbox_inches='tight',pad_inches = 0.2)
-
-
-        ruta_imagen_ping_t = os.path.join(settings.BASE_DIR, 'ping.jpg')
-        img = cv2.imread(ruta_imagen_ping_t) 
-        
-
-        imagen_jpeg1 = cv2.imencode('.jpeg', img)[1].tostring()
-        imagen_base64 =base64.b64encode(imagen_jpeg1).decode('utf-8')  
-        
-        return imagen_base64
 
 
     def open_jsonVfat(self):
