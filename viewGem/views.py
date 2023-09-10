@@ -22,12 +22,15 @@ import io
 import numpy as np
 
 from reportlab.pdfgen import canvas
+from tabulate import tabulate
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
 from PIL import Image
 from io import BytesIO
 from colorama import Fore, Style
 
+
+from pandas.plotting import table
 # 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
@@ -209,7 +212,7 @@ class minitoringGem:
         if df_data is not None:
             df = pd.DataFrame.from_dict(df_data) 
             processed_image =self.mostrar_plot_all(df)
-            pdf_buffer = self.generate_pdf_with_image(processed_image)
+            pdf_buffer = self.generate_pdf_with_image(df,processed_image)
 
             # Devolver el PDF como una respuesta HTTP con el encabezado de descarga
             response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
@@ -217,14 +220,18 @@ class minitoringGem:
             return response
         
     # CREACION DE PDF
-    def generate_pdf_with_image(self,image):
+    def generate_pdf_with_image(self,df_r,image):
         # Crear un objeto BytesIO para almacenar el PDF
-        from io import BytesIO
+
+        
+        
         pdf_buffer = BytesIO()
 
         # Crear el PDF usando ReportLab
         c = canvas.Canvas(pdf_buffer, pagesize=letter)
-        c.drawString(100, 750, "Ejemplo de PDF con Imagen")
+        #c.drawString(100, 750, "Ejemplo de PDF con Imagen")
+
+        #Creacion imagen
 
         img_width, img_height = Image.fromarray(image).size
         # Calcular la posición para centrar la imagen
@@ -244,7 +251,62 @@ class minitoringGem:
 
         # Agregar la imagen al PDF
         img = ImageReader(img_temp)
-        c.drawImage(img, canvas_height/2-400/2, canvas_height-300, width=img_width, height=img_height)
+
+
+        #Estruct of PDF
+        # ==Titulo
+        widtht, heightt = letter
+
+        # Calcular la posición horizontal centrada para el título       
+        
+        titulo = "REPORT GE21"
+        # Obtener el ancho del título formateado        
+        titulo_width = c.stringWidth(titulo, "Helvetica-Bold", 24)            
+
+        x = (widtht - titulo_width/2) / 2
+        # Agregar el título centrado
+        c.drawString(x, 750, titulo)
+
+        # ==== DataFrame============
+        fig, ax = plt.subplots(figsize=(18, 11))
+
+        # Ocultar ejes en la figura
+        ax.axis('off')
+
+        # Crear una tabla de Pandas en la figura
+        tabla = ax.table(cellText=df_r.values, colLabels=df_r.columns, cellLoc='center', loc='center')
+
+        # Establecer el estilo de la tabla
+        tabla.auto_set_font_size(False)
+        tabla.set_fontsize(12)
+
+        altura_aumentada = 0.04
+        for i, key in enumerate(tabla.get_celld().keys()):
+            
+            cell = tabla.get_celld()[key]
+            if key[0] == 0:  # Fila de encabezado
+                cell.set_fontsize(14)  # Ajusta el tamaño de la fuente del encabezado
+                cell.set_text_props(weight='bold')
+                cell.set_facecolor('#FFFF00')
+            
+            if key[0]% 2 == 0:
+                cell.set_facecolor('#f2f2f2')
+
+            cell.set_height(altura_aumentada)  # Aumenta la altura de la fila
+        
+
+
+        # Cambiar el color de fondo de las filas pares
+
+
+        # Guardar la figura como una imagen en memoria (BytesIO)
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', bbox_inches='tight')
+        buffer.seek(0)
+        c.drawImage(ImageReader(buffer), canvas_height/2-380/2, 400,width=380, height=280) 
+
+        # ==Imagen VFAT
+        c.drawImage(img, canvas_height/2-400/2, canvas_height-400, width=img_width, height=img_height)
 
         c.showPage()
         c.save()
@@ -296,6 +358,8 @@ class minitoringGem:
             return render(request, "contact.html")
 
 
+
+        #OLD
         
     
 
