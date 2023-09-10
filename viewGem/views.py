@@ -22,7 +22,7 @@ import io
 import numpy as np
 
 from reportlab.pdfgen import canvas
-from tabulate import tabulate
+
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
 from PIL import Image
