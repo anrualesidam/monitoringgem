@@ -39,8 +39,13 @@
       </div>
       <div class="col">
 
-        {% if imagen_generada %}
-            <img src="data:image/png;base64,{{ imagen_generada }} " class="img-fluid">
+        {% if imagen_generada_pingc %}
+            <img src="data:image/png;base64,{{ imagen_generada_pingc }} " class="img-fluid">
+        {% endif %}
+
+        
+        {% if imagen_generada_pingd %}
+            <img src="data:image/png;base64,{{ imagen_generada_pingd }} " class="img-fluid">
         {% endif %}
         
         <!--<img src="data:image/jpeg;base64,{{ img_ping }}" alt="Plot" class="img-fluid"> 

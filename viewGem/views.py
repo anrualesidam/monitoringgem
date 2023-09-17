@@ -73,6 +73,7 @@ class minitoringGem:
                     contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
                     
                     df,name_board,user_name,fechab=self.procesor_data(contenido)
+                    #print(df)
                     request.session['dfdata'] = df.to_dict()
                     request.session['name_board'] = name_board
                     request.session['user_name'] = user_name
@@ -85,18 +86,27 @@ class minitoringGem:
 
                     #imagen_response=self.mostrar_plot(df)
 
-                    #llamar imagen ping
-                    img_pings=self.view_image_ping(request)
+                    #llamar imagen ping c
+                    img_pings_c=self.view_image_ping(request,mode="C")
                     
                     try:
-                        imagen_base64ping = base64.b64encode(img_pings.content).decode('utf-8')
+                        imagen_base64ping_c = base64.b64encode(img_pings_c.content).decode('utf-8')
                     except:
-                        imagen_base64ping = None 
+                        imagen_base64ping_c = None 
+                    
+                    #llamar imagen ping c
+                    img_pings_d=self.view_image_ping(request,mode="D")
+                    
+                    try:
+                        imagen_base64ping_d = base64.b64encode(img_pings_d.content).decode('utf-8')
+                    except:
+                        imagen_base64ping_d = None 
 
                     context = {
                             'contenido': contenido,
                             'img_plot': img_plot,
-                            'imagen_generada': imagen_base64ping,
+                            'imagen_generada_pingc': imagen_base64ping_c,
+                            'imagen_generada_pingd': imagen_base64ping_d,
                         }
                                #'df': df,
                                #'img_path': imagen_response,'img_ping':img_pings}
@@ -130,12 +140,12 @@ class minitoringGem:
             return HttpResponse("No hay datos para generar la imagen.")
     
     # VISTA DE LOS PING
-    def view_image_ping(self,request):
+    def view_image_ping(self,request,mode):
         df_data = request.session.get('dfdata')
         if df_data is not None:
             try:
                 df = pd.DataFrame.from_dict(df_data) 
-                processed_image =self.mostrar_ping_all(df)
+                processed_image =self.mostrar_ping_all(df,mode)
                 buf = BytesIO()
                 processed_image.canvas.print_png(buf)
 
@@ -150,26 +160,45 @@ class minitoringGem:
         else:
             return HttpResponse("No hay datos para generar la imagen.")
     
-    def mostrar_ping_all(self,df,pdf=False):
+    def mostrar_ping_all(self,df,mode,pdf=False): 
+
+        #listadd=df[len(df["DISCONNECTED_CHANNELS"])>0]#.POSITION.unique()
+
+        dfmode=df.copy()
+        dfmode['DISCONNECTED_CHANNELS']=dfmode['DISCONNECTED_CHANNELS'].astype(str)
+        dfmode['SHORT_CIRCUITED_CHANNELS']=dfmode['SHORT_CIRCUITED_CHANNELS'].astype(str)
+        tittle=""
+        if mode=="D":
+            
+            list_pos=dfmode[dfmode['DISCONNECTED_CHANNELS']!= str([""])].POSITION.unique()
+            tittle="DISCONNECTED"
         
-        len_plot=len(df[df["RESULT"]=="FAILED"])
+        if mode=="C":
+            
+            list_pos=dfmode[dfmode['SHORT_CIRCUITED_CHANNELS']!= str([""])].POSITION.unique()
+            tittle="SHORT_CIRCUITED"
+        
+        len_plot=len(list_pos)
         fig1 = plt.figure(figsize=(20, 4*len_plot),frameon=False)
         fig1.subplots_adjust(hspace=0.5, wspace=0.5)
         j=1
 
-        list_pos=df.POSITION.unique()
+        #list_pos=df.POSITION.unique()
+        
+        
+
 
         for i in list_pos:             
             df_p=df[df["POSITION"]==i]
-            prueba=df_p.iloc[0,1]           
+            prueba=df_p.iloc[0,1]
             if prueba=="FAILED":
                 ax = fig1.add_subplot(len_plot, 1, j)
                 vfat=list(df_p.POSITION)[0]
                 ax.axis("off")        
-                ping_d,imag6=self.img_ping(df_p,pdf)
+                ping_d,imag6=self.img_ping(df_p,mode,pdf)
                 j=j+1
                 
-                ax.set_title('{} - SHORT_CIRCUITED:{}'.format(vfat, ping_d), fontsize=32,
+                ax.set_title('{} - {}:{}'.format(vfat,tittle, ping_d), fontsize=32,
                               fontweight="bold", loc='center')
                 ax.imshow(imag6)              
             
@@ -226,15 +255,17 @@ class minitoringGem:
             processed_image =self.mostrar_plot_all(df,pdf=True)
 
             #PING SHORT
-            processed_image_ping_short =self.mostrar_ping_all(df,pdf=True)
+            processed_image_ping_short =self.mostrar_ping_all(df,mode="C",pdf=True)
 
-            es_cero = any(dim == 0 for dim in processed_image_ping_short.get_size_inches())
+            es_ceros = any(dim == 0 for dim in processed_image_ping_short.get_size_inches())
+            n_images=processed_image_ping_short.get_size_inches()[1]
             
 
-            if es_cero:
+            if es_ceros:
                 
                 processed_image_ping_short=np.array([], dtype=np.uint8)
             else:
+                
                 buf = BytesIO()            
                 processed_image_ping_short.canvas.print_png(buf)           
 
@@ -242,7 +273,31 @@ class minitoringGem:
                 buf.seek(0)
                 processed_image_ping_short = np.array(Image.open(buf), dtype=np.uint8)
 
-            pdf_buffer = self.generate_pdf_with_image(df,processed_image,processed_image_ping_short,name_board,user_name,fechab)
+
+            #PING SHORT
+            processed_image_ping_disconect =self.mostrar_ping_all(df,mode="D",pdf=True)
+
+            es_cerosd = any(dim == 0 for dim in processed_image_ping_disconect.get_size_inches())
+            n_imaged=processed_image_ping_disconect.get_size_inches()[1]
+            
+
+            if es_cerosd:
+                
+                processed_image_ping_disconect=np.array([], dtype=np.uint8)
+            else:
+                bufd = BytesIO()            
+                processed_image_ping_disconect.canvas.print_png(bufd)           
+
+               # # Obtener el contenido RGBA desde el búfer
+                bufd.seek(0)
+                processed_image_ping_disconect = np.array(Image.open(bufd), dtype=np.uint8)
+
+            
+
+            pdf_buffer = self.generate_pdf_with_image(df,processed_image,
+                                                      processed_image_ping_short,n_images,
+                                                      processed_image_ping_disconect,n_imaged,
+                                                      name_board,user_name,fechab)
 
             # Devolver el PDF como una respuesta HTTP con el encabezado de descarga
             response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
@@ -250,7 +305,10 @@ class minitoringGem:
             return response
         
     # CREACION DE PDF
-    def generate_pdf_with_image(self,df_r,image,imag_short,name_board,user_name,fechab):
+    def generate_pdf_with_image(self,df_r,image,
+                                imag_short,n_images,
+                                image_ping_disconect,n_imaged,
+                                name_board,user_name,fechab):
         # Crear un objeto BytesIO para almacenar el PDF
 
         
@@ -361,14 +419,17 @@ class minitoringGem:
 
         c.drawImage(img, canvas_height/2-400/2, canvas_height-460, width=img_width, height=img_height)
 
-        c.showPage()
+        
 
 
-        es_cerod = all(dim > 0 for dim in imag_short.shape)
+        es_ceroshort = all(dim > 0 for dim in imag_short.shape)
 
-        if es_cerod:
+        
 
-            titulo = "VFAT'S - SHORT_CIRCUITED"
+        if es_ceroshort:
+            c.showPage()
+
+            titulo = "VFAT'S - SHORT CIRCUITED CHANNELS"
             # Obtener el ancho del título formateado        
             titulo_width = c.stringWidth(titulo, "Helvetica-Bold", 24)            
 
@@ -389,7 +450,69 @@ class minitoringGem:
             
             image_pilshort = image_pilshort.resize((2000, 4800))
 
-            image_pilshort = image_pilshort.crop((500, 300, 2000-450, 4800-300))
+            if n_images<12:
+                image_pilshort = image_pilshort.crop((500, 0, 2000-450, 4800-300))
+            else:
+                image_pilshort = image_pilshort.crop((500, 300, 2000-450, 4800-300))
+
+            image_pilshort.save(img_tempshort, format='PNG')
+            
+
+            img_tempshort.seek(0)
+
+            # Agregar la imagen al PDF
+            imgshort = ImageReader(img_tempshort)
+            if n_images<=12:
+                widthshort=canvas_height-200
+                img_heightshort=150*(n_images/4)
+                canvasw=canvas_height-30-img_heightshort/1.3
+
+            else:
+                widthshort=canvas_height-200
+                img_heightshort=canvas_height
+                canvasw=canvas_height-30-img_heightshort/1.3
+            
+            
+
+            c.drawImage(imgshort, canvas_height/2-widthshort/2,canvasw,width=widthshort, height=img_heightshort)
+        
+        
+
+        # DESCONECTED
+        es_cerodisconected = all(dim > 0 for dim in image_ping_disconect.shape)
+
+        
+
+        if es_cerodisconected:
+            c.showPage()
+
+            titulo = "VFAT'S - DISCONNECTED CHANNELS "
+            # Obtener el ancho del título formateado        
+            titulo_width = c.stringWidth(titulo, "Helvetica-Bold", 24)            
+
+            x = (widtht - titulo_width/2) / 2
+            # Agregar el título centrado
+            c.drawString(x, 740, titulo)
+
+
+
+            img_tempshort = BytesIO()
+            image_pilshort = Image.fromarray(image_ping_disconect)
+            
+            if image_pilshort.mode == 'RGBA':
+                alpha = image_pilshort.split()[3]
+                bgmask = alpha.point(lambda x: 255-x)
+                image_pilshort = image_pilshort.convert('RGB')
+                image_pilshort.paste((255,255,255), None, bgmask)
+            
+            image_pilshort = image_pilshort.resize((2000, 4800))
+
+            
+
+            if n_imaged<12:
+                image_pilshort = image_pilshort.crop((500, 0, 2000-450, 4800-300))
+            else:
+                image_pilshort = image_pilshort.crop((500, 300, 2000-450, 4800-300))
 
             image_pilshort.save(img_tempshort, format='PNG')
 
@@ -397,10 +520,20 @@ class minitoringGem:
 
             # Agregar la imagen al PDF
             imgshort = ImageReader(img_tempshort)
-            widthshort=canvas_height-200
-            img_heightshort=canvas_height
 
-            c.drawImage(imgshort, canvas_height/2-widthshort/2,canvas_height-30-img_heightshort/1.3,width=widthshort, height=img_heightshort)
+            if n_imaged<=12:
+                widthshort=canvas_height-200
+                img_heightshort=150*(n_imaged/4)
+                canvasw=canvas_height-30-img_heightshort/1.3
+
+            else:
+                widthshort=canvas_height-200
+                img_heightshort=canvas_height
+                canvasw=canvas_height-30-img_heightshort/1.3
+            
+
+            c.drawImage(imgshort, canvas_height/2-widthshort/2,canvasw,width=widthshort, height=img_heightshort)
+
 
 
 
@@ -471,10 +604,11 @@ class minitoringGem:
     
         data_new=[j.split("\t") for j in list_text[4:] if j!=""]
         data_dicc=[]
+        
         data_dicc.append([j[0].upper() for j in data_new])
         data_dicc.append([j[1].upper() for j in data_new])
-        data_dicc.append([j[2].upper() for j in data_new])
-        data_dicc.append([j[3].replace("\r","").upper().split(",") for j in data_new])
+        data_dicc.append([j[2].replace("-","").upper().split(",") for j in data_new])
+        data_dicc.append([j[3].replace("-","").replace("\r","").upper().split(",") for j in data_new])
 
         dicc = {} 
         for i in range(len(titulos)):
@@ -524,21 +658,29 @@ class minitoringGem:
         return imagen_base64#render(request, 'imagen.html', contexto)
 
     #IMAGEN DE PINGS
-    def img_ping(self,df_p,pdf):
+    def img_ping(self,df_p,mode,pdf):
         ruta_imagen_ping = os.path.join(settings.BASE_DIR, 'viewGem/static/images/Connector_with_border.jpg')
         img3 = cv2.imread(ruta_imagen_ping) 
         img3=cv2.resize(img3, (1552, 355))
-        
-        ping_d=list(df_p.SHORT_CIRCUITED_CHANNELS)[0]
+
+        if mode=="C":
+            ping_d=list(df_p.SHORT_CIRCUITED_CHANNELS)[0]
+            colorimage=(0, 255, 255)
+            colorpdf=(255, 255, 0)
+        if mode=="D":
+            ping_d=list(df_p.DISCONNECTED_CHANNELS)[0]
+            colorimage=(0, 0, 255)
+            colorpdf=(255, 0, 0)
+
 
         
         confi_pin=self.open_jsonPing()
         try:
             for j in ping_d:
                 if pdf:
-                    color = (255, 255, 0)
+                    color = colorpdf
                 else:
-                    color = (0, 255, 255)
+                    color = colorimage
 
                 img3 = cv2.line(img3, confi_pin[j]["pos"][0], confi_pin[j]["pos"][1], color, confi_pin[j]["thick"])    
         except:
