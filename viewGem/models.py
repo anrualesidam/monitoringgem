@@ -1,7 +1,13 @@
 from django.db import models
+from .managers import CustomUserManager
+from django.contrib.auth.models import AbstractUser
+
 
 # Create your models here.
 
+class CustomUser(AbstractUser):
+    # Your custom fields go here
+    objects = CustomUserManager()
 
 class MiTabla(models.Model):
     

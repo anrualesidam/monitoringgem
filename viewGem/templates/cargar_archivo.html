@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+
+<div class="d-flex justify-content-center align-items-center containernew">
+  <h5 class="mb-3">Welcome, {{ request.user.username }}!</h5>
+</div> 
+<div class="d-flex justify-content-center align-items-center" style="height: 40vh;">
   <div>
     
     <form method="post" enctype="multipart/form-data">

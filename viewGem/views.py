@@ -35,6 +35,9 @@ from pandas.plotting import table
 
 from .models import MiTabla
 import datetime
+
+
+from django.contrib.auth import authenticate, login
 # 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
@@ -55,6 +58,65 @@ import datetime
 # import PIL as PL
 # from io import BytesIO
 
+class minitoringLogin:
+    def login(self, request):
+        if request.method == 'POST':
+
+            self.username = request.POST.get('username')
+
+            self.password = request.POST.get('password')
+
+            print(self.username,self.password)
+
+            user = authenticate(
+                request, username=self.username.lower(), password=self.password)
+
+            context = {'contenido': self.username.lower()}
+            if user is not None:
+                login(request, user)
+                request.session['minitoring_username'] = self.username.lower()
+                return redirect('cargar_archivo')
+                #return render(request, 'cargar_archivo.html', context)
+            else:
+                # messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
+                messages.warning(
+                    request, 'Incorrect password or user name, please check! ')
+                return render(request, 'alert_nofile_login.html')
+
+        return render(request, 'login.html')
+
+class Home:
+    def home(self, request):
+        return render(request, "home.html")
+
+    def contactin(self, request):
+        if request.method == 'POST':
+            # form = ContactForm(request.POST)
+
+            name = request.POST['name']
+            email = request.POST['email']
+            subject = request.POST['subject']
+            message = request.POST['message']
+
+            # Crear un objeto MIMEText con el mensaje y el tipo de contenido
+            # Send the email
+            subject = 'GEM platform support - ' + subject
+            from_email = 'alruba40@gmail.com'
+            to_email = [email, 'arualesb.1@cern.ch']
+
+            message_with_sender = f"Hello {string.capwords(name)}: \n\n \
+                        Thank you very much for contacting us!!. \n\n \
+                        We will be contacting you shortly by email {email}  to resolve the concern \n\n \
+                        \"{message}\" \n\n Best regards \n Alexis Ruales!!"
+
+            # Send the email
+            send_mail(subject, message_with_sender, from_email, to_email)
+
+            messages.success(request, f'We will process the request with the email {email.upper()}, \n\n \
+                                    ¿Is that correct?')
+            return render(request, "confirmation_send_emailin.html")
+        else:
+            return render(request, "contactin.html")
 
 class minitoringGem:
 
@@ -219,12 +281,15 @@ class minitoringGem:
     # CARGA DE ARCHIVOS      
 
     def cargar_archivo(self,request):
+        context = {'contenido': request.session.get('minitoring_username')}   
+        print("aquiiiii",context)     
         if request.method == 'POST':
             if 'archivo' not in request.FILES:
                 messages.warning(request, 'You must select a file to upload')
                 return render(request, 'alert_nofile.html')
             
             else:
+                name_data = request.session.get('minitoring_username')
                 archivo = request.FILES['archivo'] 
                 
                 extension = self.obtener_extension(archivo.name)
@@ -285,7 +350,7 @@ class minitoringGem:
                     return render(request, 'alert_nofile.html')
             
         else:
-            return render(request, 'cargar_archivo.html')
+            return render(request, 'cargar_archivo.html',context)
         
     # VISTA DE LOS VFAT
     def search_view(self,request):

@@ -26,6 +26,8 @@ SECRET_KEY = 'django-insecure-$35-gvwzfmgd=515poj%v&3mfir!z7n(w$%w^t9&ft9o2go^i0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+AUTH_USER_MODEL = 'viewGem.CustomUser'
+
 ALLOWED_HOSTS = ['*']
 
 
@@ -81,7 +83,7 @@ WSGI_APPLICATION = 'monitoringgem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': "cms_data_base.db",
+        'NAME':  BASE_DIR / 'db.sqlite3',
     },
     'robdb': {
         'ENGINE': 'django.db.backends.sqlite3',
