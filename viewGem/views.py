@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render,redirect
 from .forms import ArchivoForm
 from django.contrib import messages
 from django.urls import reverse
@@ -32,6 +32,9 @@ from colorama import Fore, Style
 from matplotlib.transforms import Bbox
 
 from pandas.plotting import table
+
+from .models import MiTabla
+import datetime
 # 
 # import matplotlib.pyplot as plt
 # from .forms import ContactForm
@@ -53,7 +56,165 @@ from pandas.plotting import table
 # from io import BytesIO
 
 
-class minitoringGem:  
+class minitoringGem:
+
+    # SEARCH FILES
+
+    def searchfilege21(self,request):
+        #query = request.GET.get('query', '')
+
+    # Realiza la búsqueda en la base de datos por columna2
+        #resultados = MiTabla.objects.filter(columna2__icontains=query)
+        #nuevo_registro = MiTabla(name_rbo="Nombre del registro", info_rbo="Información del registro", fechas="2023-09-17")
+        #nuevo_registro.save()
+
+        queryset = MiTabla.objects.using('robdb').all()
+        dft = pd.DataFrame(list(queryset.values()))
+
+        list_id=list(dft.name_rbo.unique())
+
+        selected_optiones =list_id[0]
+        contenido = dft[dft["name_rbo"]==selected_optiones].tail(1)['info_rbo'].values[0]
+        
+
+        df,name_board,user_name,fechab=self.procesor_data(contenido)
+
+        #print("select:",selected_optiones)
+        #print("Df select::::",df)
+        #print(df)
+        request.session['dfdata'] = df.to_dict()
+        request.session['name_board'] = name_board
+        request.session['user_name'] = user_name
+        request.session['fechab'] = fechab
+
+        response =self.search_view(request)
+        img_plot = base64.b64encode(response.content).decode("utf-8")
+        
+        #llamar imagenes
+
+        #imagen_response=self.mostrar_plot(df)
+
+        #llamar imagen ping c
+        img_pings_c=self.view_image_ping(request,mode="C")
+        
+        try:
+            imagen_base64ping_c = base64.b64encode(img_pings_c.content).decode('utf-8')
+        except:
+            imagen_base64ping_c = None 
+        
+        #llamar imagen ping c
+        img_pings_d=self.view_image_ping(request,mode="D")
+        
+        try:
+            imagen_base64ping_d = base64.b64encode(img_pings_d.content).decode('utf-8')
+        except:
+            imagen_base64ping_d = None
+
+        if request.method == 'POST':
+            list_id=list(["None"])+list_id
+            selected_optiones = request.POST.get('selected_option')
+            contenido = dft[dft["name_rbo"]==selected_optiones].tail(1)['info_rbo'].values[0]
+            
+
+            df,name_board,user_name,fechab=self.procesor_data(contenido)
+
+            #print("select:",selected_optiones)
+            #print("Df select::::",df)
+            #print(df)
+            request.session['dfdata'] = df.to_dict()
+            request.session['name_board'] = name_board
+            request.session['user_name'] = user_name
+            request.session['fechab'] = fechab
+
+            response =self.search_view(request)
+            img_plot = base64.b64encode(response.content).decode("utf-8")
+            
+            #llamar imagenes
+
+            #imagen_response=self.mostrar_plot(df)
+
+            #llamar imagen ping c
+            img_pings_c=self.view_image_ping(request,mode="C")
+            
+            try:
+                imagen_base64ping_c = base64.b64encode(img_pings_c.content).decode('utf-8')
+            except:
+                imagen_base64ping_c = None 
+            
+            #llamar imagen ping c
+            img_pings_d=self.view_image_ping(request,mode="D")
+            
+            try:
+                imagen_base64ping_d = base64.b64encode(img_pings_d.content).decode('utf-8')
+            except:
+                imagen_base64ping_d = None 
+
+        # Convierte los resultados a un formato JSON
+        #results_data = [{'columna2': item.columna2} for item in resultados]
+        #print(["list_id"])
+        return render(request, 'searchfile.html',{'options':list_id,
+                                                  'contenido': contenido,
+                                                  'img_plot': img_plot,
+                                                  'imagen_generada_pingc': imagen_base64ping_c,
+                                                  'imagen_generada_pingd': imagen_base64ping_d})
+        """
+        if request.method == 'POST':
+            columna1 = request.POST['columna1']
+            columna2 = request.POST['columna2']
+            columna3 = request.POST['columna3']
+
+            # Crea un nuevo registro en la base de datos
+            mi_registro = MiTabla(columna1=columna1, columna2=columna2, columna3=columna3)
+            mi_registro.save()
+
+
+           # return redirect('formulario_completo')  # Redirige a una página de confirmación o a donde desees
+
+        return render(request, 'searchfile.html')"""
+    
+    
+    
+    def uploaddatabase(self,request):
+        if request.method == 'POST':
+            if 'archivos' not in request.FILES:
+                messages.warning(request, 'You must select a file to upload')
+                return render(request, 'alert_nofile_db.html')
+            
+            else:
+                archivo = request.FILES['archivos'] 
+
+                #print(archivo)
+                
+                extension = self.obtener_extension(archivo.name)
+
+                #print("ARCHIVO",archivo,extension)
+
+                if extension == '.txt':
+                    
+                    contenido = archivo.read().decode('utf-8') # leer el contenido del archivo
+                    
+                    df,name_board,user_name,fechab=self.procesor_data(contenido)
+
+                    time_data=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    name_boarddb=name_board[:-1].split(":")[1].replace(" ", "").replace("-", "_").replace("-", "_")
+
+                    #print(time_data)
+                    #print(name_boarddb)
+
+                    nuevo_registro = MiTabla(name_rbo=name_boarddb, info_rbo=contenido, fechas=time_data)
+                    nuevo_registro.save(using='robdb')
+
+                    messages.warning(request, 'Database updated with boar {} on date {}'.format(name_boarddb,time_data))
+
+                    return render(request, 'fileuploaddb.html')
+                
+                else:
+                    messages.warning(request, 'You must load a file with a .txt extension Ex: GE21-RO-M2-0008_20210916_11-02.txt ')
+                    return render(request, 'fileuploaddb.html')
+        else:
+            return render(request, 'searchfile.html')        
+
+        
 
     # CARGA DE ARCHIVOS      
 

@@ -3,6 +3,9 @@
 
 
 {% block content %}
+
+
+
 <div class="d-flex justify-content-center align-items-center">
     <h2 class="mb-3">File uploaded successfully</h2>
 </div>
@@ -11,12 +14,6 @@
     <div>
         <a class="btn btn-primary mr-2" href="{% url 'cargar_archivo' %}">Upload new file</a>
         <a href="{% url 'generate_pdf' %}" target="_blank"  class="btn btn-secondary mr-2">Download report</a>
-        
-        <!--<a href="{{generate_pdf}}" target="_blank"  class="btn btn-secondary mr-2" type="submit">Download report</a>
-          --> 
-       
-
-
     </div>
     
 </div>

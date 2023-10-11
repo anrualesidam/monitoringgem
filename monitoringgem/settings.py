@@ -82,6 +82,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': "cms_data_base.db",
+    },
+    'robdb': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'files_rob_db.db',
     }
 }
 
